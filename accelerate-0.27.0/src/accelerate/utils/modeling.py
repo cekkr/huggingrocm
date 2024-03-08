@@ -283,8 +283,9 @@ def shard_checkpoint(
 
 
 class TensorProxy:
-    def __init__(self, target):
+    def __init__(self, target, device):
         self.target = target
+        self.gpuDevice = device
 
     def __add__(self, other):
         if isinstance(other, (torch.Tensor)):
@@ -310,20 +311,40 @@ class TensorProxy:
             # If the original attribute is callable, we return a new wrapper function
             def wrapper(*args, **kwargs):
                 # Here you can analyze the arguments before calling the original function
-                print(f"Calling {name} with args: {args} and kwargs: {kwargs}")
+                print(f"Calling {name}")
 
-                # TODO: look for tensors on CPU
+                # look for tensors on CPU
                 for key, value in kwargs.items():
                     print(f"{key}: {value}")
+                    if isinstance(value, TensorProxy):
+                        value.toGPU()
 
                 # Perform the call to the original function
                 result = attr(*args, **kwargs)
                 # Optionally, process the result before returning
+
+                # back to CPU
+                for key, value in kwargs.items():
+                    print(f"{key}: {value}")
+                    if isinstance(value, TensorProxy):
+                        value.toCPU()
+
+                result = TensorProxy(result, self.gpuDevice)
+                result.toCPU()
+
                 return result
 
             return wrapper
         else:
             return attr
+
+    def toGPU(self):
+        if self.target.is_cpu:
+            self.target = self.target.to(self.gpuDevice)
+
+    def toCPU(self):
+        if self.target.is_cuda:
+            self.target = self.target.to("cpu")
 
 
 def set_module_tensor_to_device(
@@ -450,7 +471,7 @@ def set_module_tensor_to_device(
                     )
         elif isinstance(value, torch.Tensor):
             # new_value = value.to(device)
-            new_value = TensorProxy(value)
+            new_value = TensorProxy(value, device)
         else:
             new_value = torch.tensor(value, device=device)
         if device_quantization is not None:
