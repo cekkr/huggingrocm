@@ -287,10 +287,18 @@ class TensorProxy:
         self.target = target
 
     def __add__(self, other):
-        if isinstance(other, (int, float)):
+        if isinstance(other, (torch.Tensor)):
             return TensorProxy(self.target + other)
         elif isinstance(other, TensorProxy):
             return TensorProxy(self.target + other.target)
+        else:
+            raise TypeError("Unsupported type for addition")
+
+    def __sub__(self, other):
+        if isinstance(other, (torch.Tensor)):
+            return TensorProxy(self.target - other)
+        elif isinstance(other, TensorProxy):
+            return TensorProxy(self.target - other.target)
         else:
             raise TypeError("Unsupported type for addition")
 
@@ -303,6 +311,11 @@ class TensorProxy:
             def wrapper(*args, **kwargs):
                 # Here you can analyze the arguments before calling the original function
                 print(f"Calling {name} with args: {args} and kwargs: {kwargs}")
+
+                # TODO: look for tensors on CPU
+                for key, value in kwargs.items():
+                    print(f"{key}: {value}")
+
                 # Perform the call to the original function
                 result = attr(*args, **kwargs)
                 # Optionally, process the result before returning
