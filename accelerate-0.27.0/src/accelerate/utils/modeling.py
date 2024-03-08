@@ -436,7 +436,8 @@ def set_module_tensor_to_device(
                         new_value, requires_grad=old_value.requires_grad
                     )
         elif isinstance(value, torch.Tensor):
-            new_value = value.to(device)
+            # new_value = value.to(device)
+            new_value = TensorProxy(value)
         else:
             new_value = torch.tensor(value, device=device)
         if device_quantization is not None:
